@@ -1,0 +1,24 @@
+{
+  "name": "video-downloader",
+  "version": "1.0.0",
+  "description": "Console application for downloading videos",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "build": "bun run build:all",
+    "build:all": "bun run build:macos && bun run build:linux && bun run build:windows",
+    "build:macos": "bun build --compile --target=bun-darwin-x64 --outfile=dist/video-downloader-macos src/index.ts",
+    "build:linux": "bun build --compile --target=bun-linux-x64 --outfile=dist/video-downloader-linux src/index.ts",
+    "build:windows": "bun build --compile --target=bun-windows-x64 --outfile=dist/video-downloader-windows.exe src/index.ts",
+    "build:macos-arm": "bun build --compile --target=bun-darwin-arm64 --outfile=dist/video-downloader-macos-arm src/index.ts"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.0.0",
+    "progress": "^2.0.3",
+    "yaml": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}

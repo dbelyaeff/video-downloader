@@ -1,0 +1,99 @@
+{
+  "app": {
+    "title": "🎮 Download Video",
+    "welcome": "Welcome!"
+  },
+  "menu": {
+    "downloadVideo": "📺 Download Video",
+    "settings": "⚙️ Settings",
+    "exit": "🚪 Exit"
+  },
+  "settings": {
+    "title": "⚙️ Settings",
+    "defaultDownloadPath": "📁 Default download folder",
+    "defaultFilename": "📝 Default filename",
+    "preferredQuality": "🎯 Preferred quality",
+    "downloadCover": "🌟 Download cover",
+    "downloadDescription": "📝 Download description",
+    "debug": "🐛 Debug mode",
+    "browser": "🍪 Browser for cookies (YouTube auth)",
+    "mp3Bitrate": "🎵 MP3 bitrate",
+    "language": "🌐 Language",
+    "save": "💾 Save and exit"
+  },
+  "download": {
+    "enterUrl": "🔗 Enter video URL (YouTube/VK):",
+    "enterFilename": "📝 Enter filename:",
+    "enterPath": "📁 Enter folder path:",
+    "selectQuality": "🎯 Select quality:",
+    "confirmDownload": "🚀 Start download?",
+    "downloading": "🚀 Starting download...",
+    "gettingVideoInfo": "🔍 Getting video information...",
+    "gettingFormatSizes": "📊 Getting file size information...",
+    "downloadComplete": "🎉 Download complete!",
+    "totalFiles": "✅ Total files: {count}",
+    "totalSize": "📊 Total size: {size} MB",
+    "fileInfo": "- {filename} ({quality}) - {size} MB"
+  },
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "cancelled": "⏭ Cancelled",
+    "error": "❌ Error: {message}",
+    "success": "✅ Success",
+    "warning": "⚠️ Warning",
+    "loading": "⏳ Loading...",
+    "selectOption": "Select option:",
+    "required": "❌ Required field",
+    "notFound": "❌ Not found"
+  },
+  "qualities": {
+    "highest": "Highest",
+    "4K": "4K",
+    "1080p": "1080p",
+    "720p": "720p",
+    "480p": "480p",
+    "mp3": "Audio (mp3)"
+  },
+  "bitrates": {
+    "64": "64 Kbps (space saving)",
+    "96": "96 Kbps",
+    "128": "128 Kbps (standard)",
+    "192": "192 Kbps",
+    "256": "256 Kbps",
+    "320": "320 Kbps (maximum quality)"
+  },
+  "browsers": {
+    "none": "Don't use",
+    "chrome": "Chrome",
+    "firefox": "Firefox",
+    "safari": "Safari",
+    "edge": "Edge",
+    "brave": "Brave",
+    "opera": "Opera"
+  },
+  "progress": {
+    "downloading": "Downloading",
+    "progress": "{bar} {percent}% | {downloaded} / {total} @ {speed}",
+    "fileComplete": "✅ {filename} ({quality}) - {size}",
+    "downloadFailed": "❌ Download failed {filename}"
+  },
+  "dependencies": {
+    "checking": "✅ Checking dependencies",
+    "ytDlpNotFound": "❌ yt-dlp not found",
+    "ffmpegNotFound": "⚠️ ffmpeg not found. Some features may be unavailable.",
+    "initFailed": "❌ Failed to initialize dependencies",
+    "installingYtDlp": "📥 Installing yt-dlp...",
+    "installingFfmpeg": "📥 Installing ffmpeg...",
+    "downloading": "📥 Downloading {name}...",
+    "extracting": "📦 Extracting {name}...",
+    "searching": "🔍 Searching for {name}...",
+    "installed": "✅ {name} installed",
+    "installFailed": "❌ Failed to install {name}"
+  },
+  "language": {
+    "select": "🌐 Select language:",
+    "en": "English",
+    "ru": "Русский"
+  }
+}
