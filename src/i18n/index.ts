@@ -1,7 +1,6 @@
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
-import { load, dump } from 'yaml';
+// Import translations as modules for bundling
+import enTranslations from './en.json';
+import ruTranslations from './ru.json';
 
 // Available languages
 export const AVAILABLE_LANGUAGES = ['en', 'ru'] as const;
@@ -11,8 +10,11 @@ interface TranslationData {
   [key: string]: string | TranslationData;
 }
 
-// Cache for translations
-const translationsCache: Map<Language, TranslationData> = new Map();
+// Pre-loaded translations
+const translationsMap: Record<Language, TranslationData> = {
+  en: enTranslations as TranslationData,
+  ru: ruTranslations as TranslationData,
+};
 
 // Default language
 export const DEFAULT_LANGUAGE: Language = 'en';
@@ -36,26 +38,7 @@ export function getSystemLanguage(): Language {
  * Load translations for a language
  */
 function loadTranslations(lang: Language): TranslationData {
-  if (translationsCache.has(lang)) {
-    return translationsCache.get(lang)!;
-  }
-  
-  const filePath = join(__dirname, '..', 'i18n', `${lang}.json`);
-  
-  if (!existsSync(filePath)) {
-    console.warn(`Translation file not found: ${filePath}`);
-    return {};
-  }
-  
-  try {
-    const content = readFileSync(filePath, 'utf8');
-    const translations = JSON.parse(content);
-    translationsCache.set(lang, translations);
-    return translations;
-  } catch (error) {
-    console.warn(`Failed to load translations for ${lang}:`, error);
-    return {};
-  }
+  return translationsMap[lang] || translationsMap['en'];
 }
 
 /**

@@ -1,0 +1,184 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      should_release: ${{ steps.version.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get previous tag
+        id: previoustag
+        run: |
+          echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0')" >> $GITHUB_OUTPUT
+      
+      - name: Determine version bump
+        id: version
+        run: |
+          PREV_TAG="${{ steps.previoustag.outputs.tag }}"
+          PREV_VERSION=${PREV_TAG#v}
+          
+          # Parse current version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$PREV_VERSION"
+          
+          # Check commit messages for version bump indicators
+          BUMP_TYPE="patch"
+          
+          # Get commits since last tag
+          if [ "$PREV_TAG" = "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=format:"%s")
+          else
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s")
+          fi
+          
+          # Check for breaking changes (major)
+          if echo "$COMMITS" | grep -qE "^[a-z]+(\(.+\))?!:|BREAKING CHANGE"; then
+            BUMP_TYPE="major"
+          # Check for features (minor)
+          elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
+            BUMP_TYPE="minor"
+          fi
+          
+          # Bump version
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Should release: $NEW_VERSION (bump: $BUMP_TYPE)"
+          
+          # Only release on push to main or tags
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" -o "${{ github.ref }}" = "refs/tags/$NEW_VERSION" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: bun-darwin-arm64
+            output: video-downloader-macos-arm
+          - os: macos-latest
+            target: bun-darwin-x64
+            output: video-downloader-macos
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            output: video-downloader-linux
+          - os: windows-latest
+            target: bun-windows-x64
+            output: video-downloader-windows.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: bun install
+      
+      - name: Build binary
+        run: |
+          bun build --compile --target=${{ matrix.target }} --outfile=dist/${{ matrix.output }} src/index.ts
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: dist/${{ matrix.output }}
+
+  release:
+    needs: [version, build]
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      
+      - name: Display structure of downloaded files
+        run: ls -R dist
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.version.outputs.version }}
+          name: ${{ needs.version.outputs.version }}
+          body: |
+            Automated release ${{ needs.version.outputs.version }}
+            
+            ## Changes
+            See [commit history](https://github.com/${{ github.repository }}/commits/${{ github.ref }})
+            
+            ## Downloads
+            
+            - **macOS (Apple Silicon)**: `video-downloader-macos-arm`
+            - **macOS (Intel)**: `video-downloader-macos`
+            - **Linux**: `video-downloader-linux`
+            - **Windows**: `video-downloader-windows.exe`
+            
+            ## Installation
+            Download the appropriate binary for your platform and run it.
+            The application will automatically install required dependencies.
+          files: |
+            dist/video-downloader-macos-arm
+            dist/video-downloader-macos
+            dist/video-downloader-linux
+            dist/video-downloader-windows.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Update package.json version
+        run: |
+          VERSION=${{ needs.version.outputs.version }}
+          VERSION=${VERSION#v}
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" package.json
+      
+      - name: Commit version update
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: bump version to ${{ needs.version.outputs.version }} [skip ci]"
+          git push
