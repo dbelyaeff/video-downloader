@@ -144,8 +144,14 @@ async function getVideoInfo(url: string, debug: boolean, browser: string, depPat
     });
     
     child.on('error', (error) => {
-      reject(error);
+      reject(new Error(`Failed to spawn yt-dlp: ${error.message}`));
     });
+    
+    // Add timeout to prevent hanging
+    setTimeout(() => {
+      child.kill();
+      reject(new Error('yt-dlp timed out after 30 seconds'));
+    }, 30000);
   });
 }
 
@@ -852,12 +858,17 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
     return;
   }
 
-  const s = spinner();
-  s.start(t('download.gettingVideoInfo'));
+    const s = spinner();
+    s.start(t('download.gettingVideoInfo'));
 
-  try {
-    const videoInfo = await getVideoInfo(url, settings.debug, settings.browser, depPaths);
-    s.stop(t('common.success'));
+    try {
+      const videoInfo = await getVideoInfo(url, settings.debug, settings.browser, depPaths);
+      s.stop(t('common.success'));
+      
+      if (!videoInfo) {
+        log.error(t('common.error', { message: 'Video info is empty' }));
+        return;
+      }
 
     if (!videoInfo) {
       log.error(t('common.error', { message: 'Video info' }));
