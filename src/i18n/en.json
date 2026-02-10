@@ -115,15 +115,15 @@
   },
   "install": {
     "selectMethod": "🌍 Select installation method:",
-    "symlink": "🔗 Create symlink in /usr/local/bin (recommended)",
-    "copy": "📋 Copy to /usr/local/bin",
+    "symlink": "🔗 Create symlink in /usr/local/bin (recommended, requires sudo)",
+    "copy": "📋 Copy to /usr/local/bin (requires sudo)",
     "addToPath": "📁 Add to PATH via shell config",
     "enterAlias": "🏷️  Enter command alias (e.g., 'vd' or 'video-downloader'):",
     "symlinkCreated": "✅ Symlink created: {path} -> {target}",
     "copyCreated": "✅ Binary copied to: {path}",
     "pathUpdated": "✅ PATH updated in {config}",
     "restartTerminal": "🔄 Please restart your terminal or run: source {config}",
-    "permissionDenied": "❌ Permission denied. Try running with sudo.",
+    "permissionDenied": "❌ Permission denied. Run with sudo or log in as administrator.",
     "alreadyExists": "⚠️  Command already exists: {path}",
     "overwrite": "Overwrite existing command?",
     "windowsNotSupported": "❌ Global installation on Windows requires manual PATH configuration."
