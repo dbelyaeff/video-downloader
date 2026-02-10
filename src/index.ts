@@ -136,10 +136,18 @@ async function getVideoInfo(url: string, debug: boolean, browser: string, depPat
           reject(new Error('Failed to parse video information'));
         }
       } else {
-        const errorMsg = debug || process.env.DEBUG === 'true' 
-          ? `Failed to get video information: ${errorOutput}` 
-          : 'Failed to get video information';
-        reject(new Error(errorMsg));
+        // Check for authentication required error
+        if (errorOutput.includes('Sign in to confirm') || 
+            errorOutput.includes('cookies-from-browser') ||
+            errorOutput.includes('Use --cookies') ||
+            errorOutput.includes('authentication')) {
+          reject(new Error('AUTH_REQUIRED'));
+        } else {
+          const errorMsg = debug || process.env.DEBUG === 'true' 
+            ? `Failed to get video information: ${errorOutput}` 
+            : 'Failed to get video information';
+          reject(new Error(errorMsg));
+        }
       }
     });
     
@@ -1036,9 +1044,24 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
       log.info(t('download.fileInfo', { filename: result.filename, quality: result.quality, size: result.sizeMb }));
     }
 
-  } catch (error) {
+  } catch (error: any) {
     s.stop();
-    log.error(t('common.error', { message: error.message }));
+    
+    // Check for authentication required error
+    if (error.message === 'AUTH_REQUIRED') {
+      log.error('');
+      log.error(t('auth.required'));
+      log.error(t('auth.youtubeBot'));
+      log.info('');
+      log.info(t('auth.solution'));
+      log.info(t('auth.step1'));
+      log.info(t('auth.step2'));
+      log.info(t('auth.step3'));
+      log.info(t('auth.step4'));
+      log.info('');
+    } else {
+      log.error(t('common.error', { message: error.message }));
+    }
   }
 }
 

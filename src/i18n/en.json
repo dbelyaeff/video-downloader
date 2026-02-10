@@ -104,6 +104,15 @@
     "installed": "✅ {name} installed",
     "installFailed": "❌ Failed to install {name}"
   },
+  "auth": {
+    "required": "🔐 Authentication Required",
+    "youtubeBot": "YouTube requires confirmation that you are not a bot.",
+    "solution": "To download this video:",
+    "step1": "1. Open Settings (⚙️)",
+    "step2": "2. Select 'Browser for cookies'",
+    "step3": "3. Choose a browser where you are logged into YouTube",
+    "step4": "4. Try downloading the video again"
+  },
   "install": {
     "selectMethod": "🌍 Select installation method:",
     "symlink": "🔗 Create symlink in /usr/local/bin (recommended)",
