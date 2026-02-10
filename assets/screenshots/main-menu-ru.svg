@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="700" height="300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="700" height="300" fill="url(#bg)" rx="10" ry="10"/>
+  
+  <!-- Terminal header -->
+  <rect width="700" height="30" fill="#0f0f23" rx="10" ry="10"/>
+  <rect width="700" height="25" fill="#0f0f23" y="5"/>
+  
+  <!-- Window buttons -->
+  <circle cx="20" cy="15" r="6" fill="#ff5f56"/>
+  <circle cx="40" cy="15" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="15" r="6" fill="#27c93f"/>
+  
+  <!-- Title -->
+  <text x="350" y="20" font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="#666" text-anchor="middle">video-downloader</text>
+  
+  <!-- Content -->
+  <text x="30" y="60" font-family="Menlo, Monaco, monospace" font-size="14" fill="#fff">
+    <tspan x="30" dy="0">┌  🎮 Скачать видео</tspan>
+    <tspan x="30" dy="20">│</tspan>
+    <tspan x="30" dy="20">◆  ✅ Зависимости проверены</tspan>
+    <tspan x="30" dy="20">│</tspan>
+    <tspan x="30" dy="20">◆  Выберите опцию:</tspan>
+    <tspan x="30" dy="20">│  ● 📺 Скачать видео</tspan>
+    <tspan x="30" dy="20">│  ○ ⚙️  Настройки</tspan>
+    <tspan x="30" dy="20">│  ○ 🚪 Выход</tspan>
+    <tspan x="30" dy="20">└</tspan>
+  </text>
+</svg>

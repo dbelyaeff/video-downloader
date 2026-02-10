@@ -289,13 +289,13 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 ## Скриншоты
 
 ### Главное меню
-![Главное меню](assets/screenshots/main-menu.svg)
+![Главное меню](assets/screenshots/main-menu-ru.svg)
 
 ### Процесс загрузки
-![Процесс загрузки](assets/screenshots/download-process.svg)
+![Процесс загрузки](assets/screenshots/download-process-ru.svg)
 
 ### Меню настроек
-![Меню настроек](assets/screenshots/settings-menu.svg)
+![Меню настроек](assets/screenshots/settings-menu-ru.svg)
 
 ## Установка
 
