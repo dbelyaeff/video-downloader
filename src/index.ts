@@ -667,14 +667,28 @@ async function installGlobally(): Promise<void> {
   // Get current executable path
   let currentBinaryPath: string;
   try {
+    // process.argv[0] contains the path to the current executable
     currentBinaryPath = process.argv[0];
-    if (!currentBinaryPath || currentBinaryPath.includes('bun')) {
-      // Running from source, need to check dist folder
+    
+    // Check if we're running from source (bun) or compiled binary
+    const isRunningFromSource = currentBinaryPath.includes('bun') || 
+                                 currentBinaryPath.includes('node') ||
+                                 currentBinaryPath.endsWith('.ts');
+    
+    if (isRunningFromSource) {
+      // Running from source with bun, need to check dist folder
       const distBinary = join(process.cwd(), 'dist', isMacOS ? 'video-downloader-macos' : 'video-downloader-linux');
       if (existsSync(distBinary)) {
         currentBinaryPath = distBinary;
       } else {
         log.error('Binary not found. Please build first: bun run build');
+        return;
+      }
+    } else {
+      // Running compiled binary - use the actual binary path
+      // Verify the binary exists at the path
+      if (!existsSync(currentBinaryPath)) {
+        log.error('Could not locate binary at: ' + currentBinaryPath);
         return;
       }
     }
