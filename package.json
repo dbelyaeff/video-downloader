@@ -1,6 +1,6 @@
 {
   "name": "video-downloader",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Console application for downloading videos",
   "main": "src/index.ts",
   "scripts": {

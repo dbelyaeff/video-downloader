@@ -19,6 +19,7 @@
     "browser": "🍪 Browser for cookies (YouTube auth)",
     "mp3Bitrate": "🎵 MP3 bitrate",
     "language": "🌐 Language",
+    "installGlobally": "🌍 Install globally (add to PATH)",
     "save": "💾 Save and exit"
   },
   "download": {
@@ -90,6 +91,21 @@
     "searching": "🔍 Searching for {name}...",
     "installed": "✅ {name} installed",
     "installFailed": "❌ Failed to install {name}"
+  },
+  "install": {
+    "selectMethod": "🌍 Select installation method:",
+    "symlink": "🔗 Create symlink in /usr/local/bin (recommended)",
+    "copy": "📋 Copy to /usr/local/bin",
+    "addToPath": "📁 Add to PATH via shell config",
+    "enterAlias": "🏷️  Enter command alias (e.g., 'vd' or 'video-downloader'):",
+    "symlinkCreated": "✅ Symlink created: {path} -> {target}",
+    "copyCreated": "✅ Binary copied to: {path}",
+    "pathUpdated": "✅ PATH updated in {config}",
+    "restartTerminal": "🔄 Please restart your terminal or run: source {config}",
+    "permissionDenied": "❌ Permission denied. Try running with sudo.",
+    "alreadyExists": "⚠️  Command already exists: {path}",
+    "overwrite": "Overwrite existing command?",
+    "windowsNotSupported": "❌ Global installation on Windows requires manual PATH configuration."
   },
   "language": {
     "select": "🌐 Select language:",

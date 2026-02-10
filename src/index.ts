@@ -1,9 +1,9 @@
 import { intro, outro, select, text, multiselect, log, spinner, isCancel } from '@clack/prompts';
-import { spawn } from 'child_process';
-import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync } from 'fs';
-import { join, extname } from 'path';
+import { spawn, execSync } from 'child_process';
+import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, symlinkSync, copyFileSync, chmodSync } from 'fs';
+import { join, extname, dirname, basename } from 'path';
 import { parse, stringify } from 'yaml';
-import { homedir } from 'os';
+import { homedir, platform } from 'os';
 import { ensureDependencies, getYtDlpCommand, getFfmpegCommand, DependencyPaths } from './dependencies';
 import { t, getSystemLanguage, setCurrentLanguage, AVAILABLE_LANGUAGES, Language, isValidLanguage, DEFAULT_LANGUAGE } from './i18n';
 
@@ -516,6 +516,7 @@ async function configureSettings(settings: Settings): Promise<void> {
       { label: t('settings.browser'), value: 'browser' },
       { label: t('settings.mp3Bitrate'), value: 'mp3Bitrate' },
       { label: t('settings.language'), value: 'language' },
+      { label: t('settings.installGlobally'), value: 'installGlobally' },
       { label: t('settings.save'), value: 'save' },
     ],
   });
@@ -640,6 +641,9 @@ async function configureSettings(settings: Settings): Promise<void> {
         setCurrentLanguage(languageResult);
       }
       break;
+    case 'installGlobally':
+      await installGlobally();
+      break;
     case 'save':
       saveSettings(settings);
       log.success(t('common.success'));
@@ -648,116 +652,179 @@ async function configureSettings(settings: Settings): Promise<void> {
 
   await configureSettings(settings);
 }
+
+async function installGlobally(): Promise<void> {
+  const currentPlatform = platform();
+  const isWindows = currentPlatform === 'win32';
+  const isMacOS = currentPlatform === 'darwin';
+  const isLinux = currentPlatform === 'linux';
   
-  switch (newSettings) {
-    case 'defaultDownloadPath':
-      settings.defaultDownloadPath = await text({
-        message: 'Введите путь к папке (оставьте пустым для текущей директории):',
-        placeholder: settings.defaultDownloadPath || '',
-      });
-      break;
-    case 'defaultFilename':
-      settings.defaultFilename = await text({
-        message: 'Имя файла по умолчанию:',
-        placeholder: settings.defaultFilename || '',
-      });
-      break;
-    case 'preferredQuality':
-      const qualityResult = await select<string>({
-        message: 'Выберите предпочитаемое качество:',
-        options: [
-          { label: 'Наивысшее', value: 'highest' },
-          { label: '4K', value: '4K' },
-          { label: '1080p', value: '1080p' },
-          { label: '720p', value: '720p' },
-          { label: '480p', value: '480p' },
-          { label: 'Аудио (mp3)', value: 'mp3' },
-        ],
-      });
-      if (!isCancel(qualityResult) && typeof qualityResult === 'string') {
-        settings.preferredQuality = qualityResult;
-      }
-      break;
-    case 'downloadCover':
-      const coverChoice = await select<boolean>({
-        message: 'Загружать обложку?',
-        options: [
-          { label: 'Да', value: true },
-          { label: 'Нет', value: false },
-        ],
-        initialValue: settings.downloadCover,
-      });
-      if (!isCancel(coverChoice) && typeof coverChoice === 'boolean') {
-        settings.downloadCover = coverChoice;
-      }
-      break;
-    case 'downloadDescription':
-      const descChoice = await select<boolean>({
-        message: 'Загружать описание?',
-        options: [
-          { label: 'Да', value: true },
-          { label: 'Нет', value: false },
-        ],
-        initialValue: settings.downloadDescription,
-      });
-      if (!isCancel(descChoice) && typeof descChoice === 'boolean') {
-        settings.downloadDescription = descChoice;
-      }
-      break;
-    case 'debug':
-      const debugChoice = await select<boolean>({
-        message: 'Включить режим отладки?',
-        options: [
-          { label: 'Да', value: true },
-          { label: 'Нет', value: false },
-        ],
-        initialValue: settings.debug,
-      });
-      if (!isCancel(debugChoice) && typeof debugChoice === 'boolean') {
-        settings.debug = debugChoice;
-      }
-      break;
-    case 'browser':
-      const browserResult = await select<string>({
-        message: 'Выберите браузер для получения cookies:',
-        options: [
-          { label: 'Не использовать', value: '' },
-          { label: 'Chrome', value: 'chrome' },
-          { label: 'Firefox', value: 'firefox' },
-          { label: 'Safari', value: 'safari' },
-          { label: 'Edge', value: 'edge' },
-          { label: 'Brave', value: 'brave' },
-          { label: 'Opera', value: 'opera' },
-        ],
-      });
-      if (!isCancel(browserResult) && typeof browserResult === 'string') {
-        settings.browser = browserResult;
-      }
-      break;
-    case 'mp3Bitrate':
-      const bitrateResult = await select<number>({
-        message: 'Выберите битрейт MP3:',
-        options: [
-          { label: '64 Kbps (экономия места)', value: 64 },
-          { label: '96 Kbps', value: 96 },
-          { label: '128 Kbps (стандарт)', value: 128 },
-          { label: '192 Kbps', value: 192 },
-          { label: '256 Kbps', value: 256 },
-          { label: '320 Kbps (максимальное качество)', value: 320 },
-        ],
-        initialValue: settings.mp3Bitrate,
-      });
-      if (!isCancel(bitrateResult) && typeof bitrateResult === 'number') {
-        settings.mp3Bitrate = bitrateResult;
-      }
-      break;
-    case 'save':
-      saveSettings(settings);
-      log.success('✅ Настройки сохранены');
-      return;
+  if (isWindows) {
+    log.warning(t('install.windowsNotSupported'));
+    return;
   }
   
-  await configureSettings(settings);
+  // Get current executable path
+  let currentBinaryPath: string;
+  try {
+    currentBinaryPath = process.argv[0];
+    if (!currentBinaryPath || currentBinaryPath.includes('bun')) {
+      // Running from source, need to check dist folder
+      const distBinary = join(process.cwd(), 'dist', isMacOS ? 'video-downloader-macos' : 'video-downloader-linux');
+      if (existsSync(distBinary)) {
+        currentBinaryPath = distBinary;
+      } else {
+        log.error('Binary not found. Please build first: bun run build');
+        return;
+      }
+    }
+  } catch {
+    log.error('Could not determine binary path');
+    return;
+  }
+  
+  // Select installation method
+  const method = await select<string>({
+    message: t('install.selectMethod'),
+    options: [
+      { label: t('install.symlink'), value: 'symlink' },
+      { label: t('install.copy'), value: 'copy' },
+      { label: t('install.addToPath'), value: 'path' },
+    ],
+  });
+  
+  if (isCancel(method)) {
+    return;
+  }
+  
+  // Enter alias name
+  const aliasName = await text({
+    message: t('install.enterAlias'),
+    placeholder: 'vd',
+    initialValue: 'vd',
+  });
+  
+  if (isCancel(aliasName) || !aliasName) {
+    return;
+  }
+  
+  const s = spinner();
+  s.start(t('common.loading'));
+  
+  try {
+    switch (method) {
+      case 'symlink': {
+        const targetPath = `/usr/local/bin/${aliasName}`;
+        
+        // Check if already exists
+        if (existsSync(targetPath)) {
+          s.stop();
+          const overwrite = await select<boolean>({
+            message: t('install.overwrite'),
+            options: [
+              { label: t('common.yes'), value: true },
+              { label: t('common.no'), value: false },
+            ],
+            initialValue: false,
+          });
+          
+          if (isCancel(overwrite) || !overwrite) {
+            return;
+          }
+          
+          unlinkSync(targetPath);
+          s.start(t('common.loading'));
+        }
+        
+        try {
+          symlinkSync(currentBinaryPath, targetPath);
+          chmodSync(targetPath, 0o755);
+          s.stop(t('install.symlinkCreated', { path: targetPath, target: currentBinaryPath }));
+        } catch (error: any) {
+          if (error.code === 'EACCES' || error.code === 'EPERM') {
+            s.stop(t('install.permissionDenied'));
+          } else {
+            s.stop(t('common.error', { message: error.message }));
+          }
+        }
+        break;
+      }
+      
+      case 'copy': {
+        const targetPath = `/usr/local/bin/${aliasName}`;
+        
+        // Check if already exists
+        if (existsSync(targetPath)) {
+          s.stop();
+          const overwrite = await select<boolean>({
+            message: t('install.overwrite'),
+            options: [
+              { label: t('common.yes'), value: true },
+              { label: t('common.no'), value: false },
+            ],
+            initialValue: false,
+          });
+          
+          if (isCancel(overwrite) || !overwrite) {
+            return;
+          }
+          
+          unlinkSync(targetPath);
+          s.start(t('common.loading'));
+        }
+        
+        try {
+          copyFileSync(currentBinaryPath, targetPath);
+          chmodSync(targetPath, 0o755);
+          s.stop(t('install.copyCreated', { path: targetPath }));
+        } catch (error: any) {
+          if (error.code === 'EACCES' || error.code === 'EPERM') {
+            s.stop(t('install.permissionDenied'));
+          } else {
+            s.stop(t('common.error', { message: error.message }));
+          }
+        }
+        break;
+      }
+      
+      case 'path': {
+        const shell = process.env.SHELL || '/bin/bash';
+        const isZsh = shell.includes('zsh');
+        const isBash = shell.includes('bash');
+        
+        let configFile: string;
+        if (isZsh) {
+          configFile = join(homedir(), '.zshrc');
+        } else if (isBash) {
+          configFile = join(homedir(), '.bashrc');
+        } else {
+          configFile = join(homedir(), '.profile');
+        }
+        
+        const binaryDir = dirname(currentBinaryPath);
+        const pathExport = `\n# Added by video-downloader\nexport PATH="$PATH:${binaryDir}"\nalias ${aliasName}='${currentBinaryPath}'\n`;
+        
+        try {
+          if (existsSync(configFile)) {
+            const currentContent = readFileSync(configFile, 'utf8');
+            if (!currentContent.includes(binaryDir)) {
+              writeFileSync(configFile, currentContent + pathExport);
+            }
+          } else {
+            writeFileSync(configFile, pathExport);
+          }
+          
+          s.stop(t('install.pathUpdated', { config: configFile }));
+          log.info(t('install.restartTerminal', { config: configFile }));
+        } catch (error: any) {
+          s.stop(t('common.error', { message: error.message }));
+        }
+        break;
+      }
+    }
+  } catch (error: any) {
+    s.stop(t('common.error', { message: error.message }));
+  }
 }
 
 async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths): Promise<void> {
