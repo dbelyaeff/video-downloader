@@ -866,8 +866,8 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
 
     const filename = await text({
       message: t('download.enterFilename'),
-      placeholder: videoInfo.title || 'video',
-      initialValue: videoInfo.title || 'video',
+      placeholder: String(videoInfo.title || 'video'),
+      initialValue: String(videoInfo.title || 'video'),
     });
 
     if (isCancel(filename)) {
