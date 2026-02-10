@@ -470,7 +470,7 @@ async function main() {
     process.exit(1);
   }
 
-  log.success(t('dependencies.checking'));
+  // Dependencies are checked silently - only errors are shown
   
   while (true) {
     const mainMenu = await select<string>({
@@ -890,13 +890,30 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
     log.info(t('download.gettingFormatSizes'));
     const formatSizes = await getFormatSizes(url, settings.browser, settings.debug, depPaths);
 
-    const qualityOptions = [
-      { label: `4K${formatSizes.has('4K') ? ` (${formatSizes.get('4K')})` : ''}`, value: '4K' },
-      { label: `1080p${formatSizes.has('1080p') ? ` (${formatSizes.get('1080p')})` : ''}`, value: '1080p' },
-      { label: `720p${formatSizes.has('720p') ? ` (${formatSizes.get('720p')})` : ''}`, value: '720p' },
-      { label: `480p${formatSizes.has('480p') ? ` (${formatSizes.get('480p')})` : ''}`, value: '480p' },
-      { label: `${t('qualities.mp3')}${formatSizes.has('mp3') ? ` (${formatSizes.get('mp3')})` : ''}`, value: 'mp3' },
-    ];
+    // Build quality options only for available formats
+    const qualityOptions = [];
+    
+    if (formatSizes.has('4K')) {
+      qualityOptions.push({ label: `4K (${formatSizes.get('4K')})`, value: '4K' });
+    }
+    if (formatSizes.has('1080p')) {
+      qualityOptions.push({ label: `1080p (${formatSizes.get('1080p')})`, value: '1080p' });
+    }
+    if (formatSizes.has('720p')) {
+      qualityOptions.push({ label: `720p (${formatSizes.get('720p')})`, value: '720p' });
+    }
+    if (formatSizes.has('480p')) {
+      qualityOptions.push({ label: `480p (${formatSizes.get('480p')})`, value: '480p' });
+    }
+    if (formatSizes.has('mp3')) {
+      qualityOptions.push({ label: `${t('qualities.mp3')} (${formatSizes.get('mp3')})`, value: 'mp3' });
+    }
+    
+    // If no qualities found, show error
+    if (qualityOptions.length === 0) {
+      log.error('No available formats found for this video');
+      return;
+    }
 
     const qualities = await multiselect<string>({
       message: t('download.selectQuality'),
