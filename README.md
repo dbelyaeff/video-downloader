@@ -60,6 +60,17 @@ The application automatically installs required dependencies:
 - **Error handling**: User-friendly error messages
 - **Emoji support**: Visual indicators for actions
 
+## Screenshots
+
+### Main Menu
+![Main Menu](assets/screenshots/main-menu.svg)
+
+### Download Process
+![Download Process](assets/screenshots/download-process.svg)
+
+### Settings Menu
+![Settings Menu](assets/screenshots/settings-menu.svg)
+
 ## Installation
 
 ### Option 1: Binary (Recommended)
@@ -274,6 +285,17 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 - **Понятное меню**: Интуитивная навигация
 - **Обработка ошибок**: Понятные сообщения об ошибках
 - **Поддержка эмодзи**: Визуальные индикаторы действий
+
+## Скриншоты
+
+### Главное меню
+![Главное меню](assets/screenshots/main-menu.svg)
+
+### Процесс загрузки
+![Процесс загрузки](assets/screenshots/download-process.svg)
+
+### Меню настроек
+![Меню настроек](assets/screenshots/settings-menu.svg)
 
 ## Установка
 
