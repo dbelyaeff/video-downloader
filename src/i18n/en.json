@@ -34,7 +34,19 @@
     "downloadComplete": "🎉 Download complete!",
     "totalFiles": "✅ Total files: {count}",
     "totalSize": "📊 Total size: {size} MB",
-    "fileInfo": "- {filename} ({quality}) - {size} MB"
+    "fileInfo": "- {filename} ({quality}) - {size} MB",
+    "videoPreview": "📺 Video Preview",
+    "videoTitle": "📌 Title: {title}",
+    "videoDescription": "📝 Description:",
+    "downloadCoverQuestion": "🖼️ Download cover image?",
+    "downloadDescriptionQuestion": "📄 Download description?",
+    "descriptionOptions": "📄 What to do with description?",
+    "descriptionDownload": "💾 Download to file",
+    "descriptionCopy": "📋 Copy to clipboard",
+    "descriptionSkip": "⏭️ Skip",
+    "coverDownloaded": "✅ Cover downloaded",
+    "descriptionDownloaded": "✅ Description downloaded",
+    "descriptionCopied": "✅ Description copied to clipboard"
   },
   "common": {
     "yes": "Yes",

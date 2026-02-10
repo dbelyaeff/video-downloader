@@ -407,7 +407,7 @@ async function downloadVideo(videoInfo: VideoInfo, options: {
   // Скачиваем обложку если нужно
   if (options.downloadCover) {
     const s = spinner();
-    s.start('🖼️ Загрузка обложки...');
+    s.start('🖼️ ' + t('download.gettingVideoInfo'));
 
     const coverArgs: string[] = ['--write-thumbnail', '--skip-download', '--convert-thumbnails', 'jpg'];
     if (options.browser) {
@@ -422,13 +422,13 @@ async function downloadVideo(videoInfo: VideoInfo, options: {
       child.on('error', () => resolve());
     });
 
-    s.stop('✅ Обложка загружена');
+    s.stop(t('download.coverDownloaded'));
   }
 
   // Скачиваем описание если нужно
   if (options.downloadDescription) {
     const s = spinner();
-    s.start('📝 Загрузка описания...');
+    s.start('📝 ' + t('download.gettingVideoInfo'));
 
     const descArgs: string[] = ['--write-description', '--skip-download'];
     if (options.browser) {
@@ -438,12 +438,12 @@ async function downloadVideo(videoInfo: VideoInfo, options: {
     descArgs.push(videoInfo.webpage_url);
     
     await new Promise<void>((resolve) => {
-      const child = spawn('yt-dlp', descArgs);
+      const child = spawn(getYtDlpCommand(depPaths), descArgs);
       child.on('close', () => resolve());
       child.on('error', () => resolve());
     });
     
-    s.stop('✅ Описание загружено');
+    s.stop(t('download.descriptionDownloaded'));
   }
   
   // Метаданные и обложка для MP3 добавляются автоматически yt-dlp через --embed-thumbnail --add-metadata
@@ -888,6 +888,67 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
 
     // Получаем размеры для каждого качества
     log.info(t('download.gettingFormatSizes'));
+    // Show video preview
+    log.info('');
+    log.info(t('download.videoPreview'));
+    log.info(t('download.videoTitle', { title: videoInfo.title || 'N/A' }));
+    if (videoInfo.description) {
+      log.info(t('download.videoDescription'));
+      // Show first 500 chars of description
+      const desc = videoInfo.description.length > 500 ? videoInfo.description.slice(0, 500) + '...' : videoInfo.description;
+      desc.split('\n').slice(0, 10).forEach(line => {
+        if (line.trim()) log.info('  ' + line);
+      });
+    }
+    log.info('');
+
+    // Ask about cover download
+    const downloadCoverChoice = await select<boolean>({
+      message: t('download.downloadCoverQuestion'),
+      options: [
+        { label: t('common.yes'), value: true },
+        { label: t('common.no'), value: false },
+      ],
+      initialValue: settings.downloadCover,
+    });
+
+    if (isCancel(downloadCoverChoice)) {
+      log.info(t('common.cancelled'));
+      return;
+    }
+
+    // Ask about description
+    const descriptionAction = await select<string>({
+      message: t('download.descriptionOptions'),
+      options: [
+        { label: t('download.descriptionDownload'), value: 'download' },
+        { label: t('download.descriptionCopy'), value: 'copy' },
+        { label: t('download.descriptionSkip'), value: 'skip' },
+      ],
+      initialValue: settings.downloadDescription ? 'download' : 'skip',
+    });
+
+    if (isCancel(descriptionAction)) {
+      log.info(t('common.cancelled'));
+      return;
+    }
+
+    // Handle copy to clipboard
+    if (descriptionAction === 'copy' && videoInfo.description) {
+      try {
+        const echo = spawn('echo', [videoInfo.description]);
+        const pbcopy = spawn('pbcopy');
+        echo.stdout.pipe(pbcopy.stdin);
+        await new Promise<void>((resolve) => {
+          pbcopy.on('close', () => resolve());
+          pbcopy.on('error', () => resolve());
+        });
+        log.success(t('download.descriptionCopied'));
+      } catch {
+        log.error('Failed to copy to clipboard');
+      }
+    }
+
     const formatSizes = await getFormatSizes(url, settings.browser, settings.debug, depPaths);
 
     // Build quality options only for available formats
@@ -945,8 +1006,8 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
       filename: filename,
       downloadPath: expandPath(downloadPath || process.cwd()),
       qualities,
-      downloadCover: settings.downloadCover,
-      downloadDescription: settings.downloadDescription,
+      downloadCover: downloadCoverChoice,
+      downloadDescription: descriptionAction === 'download',
       debug: settings.debug,
       browser: settings.browser,
       formatSizes,

@@ -34,7 +34,19 @@
     "downloadComplete": "🎉 Загрузка завершена!",
     "totalFiles": "✅ Всего файлов: {count}",
     "totalSize": "📊 Общий размер: {size} Мб",
-    "fileInfo": "- {filename} ({quality}) - {size} Мб"
+    "fileInfo": "- {filename} ({quality}) - {size} Мб",
+    "videoPreview": "📺 Предпросмотр видео",
+    "videoTitle": "📌 Название: {title}",
+    "videoDescription": "📝 Описание:",
+    "downloadCoverQuestion": "🖼️ Загрузить обложку?",
+    "downloadDescriptionQuestion": "📄 Загрузить описание?",
+    "descriptionOptions": "📄 Что сделать с описанием?",
+    "descriptionDownload": "💾 Скачать в файл",
+    "descriptionCopy": "📋 Скопировать в буфер обмена",
+    "descriptionSkip": "⏭️ Пропустить",
+    "coverDownloaded": "✅ Обложка загружена",
+    "descriptionDownloaded": "✅ Описание загружено",
+    "descriptionCopied": "✅ Описание скопировано в буфер обмена"
   },
   "common": {
     "yes": "Да",
