@@ -526,6 +526,31 @@ async function main() {
   }
 
   console.log(pc.cyan(`╚${border}╝`));
+
+  // Version and GitHub link
+  let appVersion = '0.0.0';
+  try {
+    const pkgPath = join(process.cwd(), 'package.json');
+    if (existsSync(pkgPath)) {
+      const pkgData = JSON.parse(readFileSync(pkgPath, 'utf8'));
+      appVersion = pkgData.version || appVersion;
+    }
+  } catch { }
+  const githubUrl = 'https://github.com/dbelyaeff/video-downloader';
+  const infoLine = `v${appVersion}  •  ${githubUrl}`;
+  const frameWidth = maxWidth + (paddingX * 2) + 2; // +2 for the border chars
+  const infoPadLeft = Math.max(0, Math.floor((frameWidth - infoLine.length) / 2));
+  console.log(' '.repeat(infoPadLeft) + pc.dim(`v${appVersion}`) + pc.dim('  •  ') + pc.cyan(pc.underline(githubUrl)));
+
+  // Disclaimer
+  const currentLang = settings.language;
+  const disclaimerUrl = currentLang === 'ru'
+    ? 'https://github.com/dbelyaeff/video-downloader/blob/main/DISCLAIMER.RU.md'
+    : 'https://github.com/dbelyaeff/video-downloader/blob/main/DISCLAIMER.EN.md';
+  const disclaimerText = `${t('app.disclaimer')} ${t('app.termsOfUse')}`;
+  const disclaimerPadLeft = Math.max(0, Math.floor((frameWidth - disclaimerText.length) / 2));
+  console.log(' '.repeat(disclaimerPadLeft) + pc.dim(t('app.disclaimer') + ' ') + pc.yellow(pc.underline(t('app.termsOfUse'))));
+  console.log(' '.repeat(disclaimerPadLeft) + pc.dim(disclaimerUrl));
   console.log();
 
   intro(t('app.title'));

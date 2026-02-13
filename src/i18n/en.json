@@ -1,10 +1,13 @@
 {
   "app": {
     "title": "🎮 Download Video",
-    "welcome": "Welcome!"
+    "welcome": "Welcome!",
+    "disclaimer": "By using this app, you agree to the",
+    "termsOfUse": "Terms of Use"
   },
   "menu": {
     "downloadVideo": "📺 Download Video",
+    "termsOfUse": "📜 Terms of Use",
     "settings": "⚙️ Settings",
     "exit": "🚪 Exit"
   },
@@ -23,7 +26,7 @@
     "save": "💾 Save and exit"
   },
   "download": {
-    "enterUrl": "🔗 Enter video URL (YouTube/VK):",
+    "enterUrl": "🔗 Enter video URL:",
     "enterFilename": "📝 Enter filename:",
     "enterPath": "📁 Enter folder path:",
     "selectQuality": "🎯 Select quality:",
@@ -58,7 +61,8 @@
     "loading": "⏳ Loading...",
     "selectOption": "Select option:",
     "required": "❌ Required field",
-    "notFound": "❌ Not found"
+    "notFound": "❌ Not found",
+    "pressEnterToContinue": "Press Enter to continue..."
   },
   "qualities": {
     "highest": "Highest",
