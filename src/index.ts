@@ -1,4 +1,6 @@
 import { intro, outro, select, text, multiselect, log, spinner, isCancel } from '@clack/prompts';
+import figlet from 'figlet';
+import pc from 'picocolors';
 import { spawn, execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, symlinkSync, copyFileSync, chmodSync } from 'fs';
 import { join, extname, dirname, basename } from 'path';
@@ -53,10 +55,10 @@ function loadSettings(): Settings {
   if (!existsSync(SETTINGS_FILE)) {
     return DEFAULT_SETTINGS;
   }
-  
+
   const content = readFileSync(SETTINGS_FILE, 'utf8');
   const settings = parse(content) as Settings;
-  
+
   return {
     ...DEFAULT_SETTINGS,
     ...settings,
@@ -107,23 +109,23 @@ async function getVideoInfo(url: string, debug: boolean, browser: string, depPat
       args.push('--cookies-from-browser', browser);
     }
     args.push(url);
-    
+
     const child = spawn(getYtDlpCommand(depPaths), args);
-    
+
     let output = '';
     let errorOutput = '';
-    
+
     child.stdout.on('data', (data) => {
       output += data.toString();
     });
-    
+
     child.stderr.on('data', (data) => {
       errorOutput += data.toString();
       if (debug || process.env.DEBUG === 'true') {
         console.error(`[yt-dlp stderr]: ${data.toString()}`);
       }
     });
-    
+
     child.on('close', (code) => {
       if (code === 0) {
         try {
@@ -137,24 +139,24 @@ async function getVideoInfo(url: string, debug: boolean, browser: string, depPat
         }
       } else {
         // Check for authentication required error
-        if (errorOutput.includes('Sign in to confirm') || 
-            errorOutput.includes('cookies-from-browser') ||
-            errorOutput.includes('Use --cookies') ||
-            errorOutput.includes('authentication')) {
+        if (errorOutput.includes('Sign in to confirm') ||
+          errorOutput.includes('cookies-from-browser') ||
+          errorOutput.includes('Use --cookies') ||
+          errorOutput.includes('authentication')) {
           reject(new Error('AUTH_REQUIRED'));
         } else {
-          const errorMsg = debug || process.env.DEBUG === 'true' 
-            ? `Failed to get video information: ${errorOutput}` 
+          const errorMsg = debug || process.env.DEBUG === 'true'
+            ? `Failed to get video information: ${errorOutput}`
             : 'Failed to get video information';
           reject(new Error(errorMsg));
         }
       }
     });
-    
+
     child.on('error', (error) => {
       reject(new Error(`Failed to spawn yt-dlp: ${error.message}`));
     });
-    
+
     // Add timeout to prevent hanging
     setTimeout(() => {
       child.kill();
@@ -171,61 +173,61 @@ async function getFormatSizes(url: string, browser: string, debug: boolean, depP
       args.push('--cookies-from-browser', browser);
     }
     args.push(url);
-    
+
     const child = spawn(getYtDlpCommand(depPaths), args);
     let output = '';
     let errorOutput = '';
-    
+
     child.stdout.on('data', (data) => {
       output += data.toString();
     });
-    
+
     child.stderr.on('data', (data) => {
       errorOutput += data.toString();
       if (debug || process.env.DEBUG === 'true') {
         console.error(`[yt-dlp stderr]: ${data.toString()}`);
       }
     });
-    
+
     child.on('close', () => {
       // Парсим вывод yt-dlp для получения размеров
       const lines = output.split('\n');
       let bestAudioSize: string | null = null;
       let bestAudioBytes: number = 0;
-      
+
       for (const line of lines) {
         // Ищем строки с разрешением формата 640x360, 1280x720 и т.д. и размером файла
         const match = line.match(/(\d+)x(\d+)\s+.*?(\d+\.?\d*\s*(?:MiB|GiB|KiB))/i);
         if (match) {
           const height = parseInt(match[2]);
           const size = match[3].trim();
-          
+
           let quality: string | null = null;
           if (height >= 2160) quality = '4K';
           else if (height >= 1080) quality = '1080p';
           else if (height >= 720) quality = '720p';
           else if (height >= 480) quality = '480p';
-          
+
           if (quality && !sizes.has(quality)) {
             sizes.set(quality, size);
           }
         }
-        
+
         // Ищем аудио-форматы (audio only)
         const audioMatch = line.match(/audio only.*?(\d+\.?\d*\s*(?:MiB|GiB|KiB))/i);
         if (audioMatch) {
           const sizeStr = audioMatch[1].trim();
           // Конвертируем в байты для сравнения
           const unitMultiplier: { [key: string]: number } = {
-            'B': 1, 'KiB': 1024, 'MiB': 1024**2, 'GiB': 1024**3, 'TiB': 1024**4,
-            'KB': 1000, 'MB': 1000**2, 'GB': 1000**3, 'TB': 1000**4
+            'B': 1, 'KiB': 1024, 'MiB': 1024 ** 2, 'GiB': 1024 ** 3, 'TiB': 1024 ** 4,
+            'KB': 1000, 'MB': 1000 ** 2, 'GB': 1000 ** 3, 'TB': 1000 ** 4
           };
           const sizeMatch = sizeStr.match(/(\d+\.?\d*)\s*(\w+)/);
           if (sizeMatch) {
             const sizeValue = parseFloat(sizeMatch[1]);
             const sizeUnit = sizeMatch[2];
             const sizeInBytes = sizeValue * (unitMultiplier[sizeUnit] || 1);
-            
+
             // Берем аудио с наибольшим размером (лучшее качество)
             if (sizeInBytes > bestAudioBytes) {
               bestAudioBytes = sizeInBytes;
@@ -234,15 +236,15 @@ async function getFormatSizes(url: string, browser: string, debug: boolean, depP
           }
         }
       }
-      
+
       // Добавляем размер аудио
       if (bestAudioSize) {
         sizes.set('mp3', bestAudioSize);
       }
-      
+
       resolve(sizes);
     });
-    
+
     child.on('error', () => {
       resolve(sizes);
     });
@@ -267,15 +269,15 @@ function truncateTitle(title: string, maxLength: number = 75): string {
   if (title.length <= maxLength) {
     return title;
   }
-  
+
   // Обрезаем до maxLength, но не разрываем слова
   const truncated = title.substring(0, maxLength);
   const lastSpaceIndex = truncated.lastIndexOf(' ');
-  
+
   if (lastSpaceIndex > 0) {
     return truncated.substring(0, lastSpaceIndex) + '…';
   }
-  
+
   return truncated + '…';
 }
 
@@ -326,15 +328,15 @@ async function downloadSingleFile(
 
   return new Promise((resolve) => {
     const child = spawn(getYtDlpCommand(depPaths), args);
-    
+
     let downloadedBytes = 0;
     let totalBytes = 0;
     let lastTotalStr = '';
     let errorOutput = '';
-    
+
     child.stdout.on('data', (data) => {
       const output = data.toString();
-      
+
       // Парсим прогресс yt-dlp
       const progressMatch = output.match(/\[download\]\s+(\d+\.?\d*)%\s+of\s+(\d+\.?\d*)([KMGT]i?B)\s+at\s+([\d\.]+)([KMGT]i?B\/s)/);
       if (progressMatch) {
@@ -343,31 +345,31 @@ async function downloadSingleFile(
         const unit = progressMatch[3];
         const speed = parseFloat(progressMatch[4]);
         const speedUnit = progressMatch[5];
-        
+
         // Конвертируем в байты для отображения
         const unitMultiplier: { [key: string]: number } = {
-          'B': 1, 'KiB': 1024, 'MiB': 1024**2, 'GiB': 1024**3, 'TiB': 1024**4,
-          'KB': 1000, 'MB': 1000**2, 'GB': 1000**3, 'TB': 1000**4
+          'B': 1, 'KiB': 1024, 'MiB': 1024 ** 2, 'GiB': 1024 ** 3, 'TiB': 1024 ** 4,
+          'KB': 1000, 'MB': 1000 ** 2, 'GB': 1000 ** 3, 'TB': 1000 ** 4
         };
-        
+
         totalBytes = size * (unitMultiplier[unit] || 1);
         downloadedBytes = (percent / 100) * totalBytes;
-        
+
         const downloadedStr = formatBytes(downloadedBytes);
         lastTotalStr = formatBytes(totalBytes);
-        
+
         const progressBar = createProgressBar(percent);
         process.stdout.write(`\r${progressBar} ${percent.toFixed(1)}% | ${downloadedStr} / ${lastTotalStr} @ ${speed}${speedUnit}/s    `);
       }
     });
-    
+
     child.stderr.on('data', (data) => {
       errorOutput += data.toString();
       if (options.debug || process.env.DEBUG === 'true') {
         console.error(`[yt-dlp stderr]: ${data.toString()}`);
       }
     });
-    
+
     child.on('close', async (code) => {
       process.stdout.write('\n');
       if (code === 0) {
@@ -450,18 +452,18 @@ async function downloadVideo(videoInfo: VideoInfo, options: {
     }
     descArgs.push('--output', join(options.downloadPath, baseFilename));
     descArgs.push(videoInfo.webpage_url);
-    
+
     await new Promise<void>((resolve) => {
       const child = spawn(getYtDlpCommand(depPaths), descArgs);
       child.on('close', () => resolve());
       child.on('error', () => resolve());
     });
-    
+
     s.stop(t('download.descriptionDownloaded'));
   }
-  
+
   // Метаданные и обложка для MP3 добавляются автоматически yt-dlp через --embed-thumbnail --add-metadata
-  
+
   return results;
 }
 
@@ -475,6 +477,57 @@ async function main() {
   // Устанавливаем язык из настроек
   setCurrentLanguage(settings.language);
 
+  // Show banner
+  console.clear();
+  const font = 'ANSI Shadow';
+  const text1 = figlet.textSync('Video', {
+    font: font as any,
+    horizontalLayout: 'default'
+  });
+  const text2 = figlet.textSync('Downloader', {
+    font: font as any,
+    horizontalLayout: 'default'
+  });
+
+  const lines1 = text1.split('\n');
+  const lines2 = text2.split('\n');
+
+  const maxWidth = Math.max(
+    ...lines1.map(l => l.length),
+    ...lines2.map(l => l.length)
+  );
+
+  // Add more padding inside the frame as requested
+  const paddingX = 4;
+  const paddingY = 1;
+  const border = '═'.repeat(maxWidth + (paddingX * 2));
+
+  console.log(pc.cyan(`╔${border}╗`));
+
+  // Top padding
+  for (let i = 0; i < paddingY; i++) {
+    console.log(pc.cyan(`║${' '.repeat(maxWidth + (paddingX * 2))}║`));
+  }
+
+  [...lines1, ...lines2].forEach((line) => {
+    // Calculate total space inside frame
+    const totalSpace = maxWidth + (paddingX * 2);
+    // Center the line
+    const remainingSpace = totalSpace - line.length;
+    const padLeft = Math.floor(remainingSpace / 2);
+    const padRight = remainingSpace - padLeft;
+
+    console.log(pc.cyan(`║${' '.repeat(padLeft)}${line}${' '.repeat(padRight)}║`));
+  });
+
+  // Bottom padding
+  for (let i = 0; i < paddingY; i++) {
+    console.log(pc.cyan(`║${' '.repeat(maxWidth + (paddingX * 2))}║`));
+  }
+
+  console.log(pc.cyan(`╚${border}╝`));
+  console.log();
+
   intro(t('app.title'));
 
   // Проверяем и устанавливаем зависимости
@@ -485,7 +538,7 @@ async function main() {
   }
 
   // Dependencies are checked silently - only errors are shown
-  
+
   while (true) {
     const mainMenu = await select<string>({
       message: t('common.selectOption'),
@@ -495,25 +548,25 @@ async function main() {
         { label: t('menu.exit'), value: 'exit' },
       ],
     });
-    
+
     if (isCancel(mainMenu)) {
       break;
     }
-    
+
     if (mainMenu === 'exit') {
       break;
     }
-    
+
     if (mainMenu === 'settings') {
       await configureSettings(settings);
       continue;
     }
-    
+
     if (mainMenu === 'download') {
       await downloadVideoFlow(settings, depPaths);
     }
   }
-  
+
   outro('👋 ' + t('menu.exit'));
 }
 
@@ -541,16 +594,22 @@ async function configureSettings(settings: Settings): Promise<void> {
 
   switch (newSettings) {
     case 'defaultDownloadPath':
-      settings.defaultDownloadPath = await text({
+      const pathResult = await text({
         message: t('download.enterPath'),
         placeholder: settings.defaultDownloadPath || '',
       });
+      if (!isCancel(pathResult)) {
+        settings.defaultDownloadPath = pathResult;
+      }
       break;
     case 'defaultFilename':
-      settings.defaultFilename = await text({
+      const filenameResult = await text({
         message: t('settings.defaultFilename'),
         placeholder: settings.defaultFilename || '',
       });
+      if (!isCancel(filenameResult)) {
+        settings.defaultFilename = filenameResult;
+      }
       break;
     case 'preferredQuality':
       const qualityResult = await select<string>({
@@ -672,24 +731,24 @@ async function installGlobally(): Promise<void> {
   const isWindows = currentPlatform === 'win32';
   const isMacOS = currentPlatform === 'darwin';
   const isLinux = currentPlatform === 'linux';
-  
+
   if (isWindows) {
     log.warning(t('install.windowsNotSupported'));
     return;
   }
-  
+
   // Get current executable path
   let currentBinaryPath: string;
   try {
     // For compiled binaries, process.execPath is the most reliable way to get the binary location
     // For source execution, it will point to bun/node
     currentBinaryPath = process.execPath;
-    
+
     // Check if we're running from source (bun/node) or compiled binary
-    const isRunningFromSource = currentBinaryPath.includes('bun') || 
-                                 currentBinaryPath.includes('node') ||
-                                 currentBinaryPath.endsWith('.ts');
-    
+    const isRunningFromSource = currentBinaryPath.includes('bun') ||
+      currentBinaryPath.includes('node') ||
+      currentBinaryPath.endsWith('.ts');
+
     if (isRunningFromSource) {
       // Running from source with bun, need to check dist folder
       const distBinary = join(process.cwd(), 'dist', isMacOS ? 'video-downloader-macos' : 'video-downloader-linux');
@@ -710,7 +769,7 @@ async function installGlobally(): Promise<void> {
     log.error('Could not determine binary path: ' + error.message);
     return;
   }
-  
+
   // Select installation method
   const method = await select<string>({
     message: t('install.selectMethod'),
@@ -720,30 +779,30 @@ async function installGlobally(): Promise<void> {
       { label: t('install.addToPath'), value: 'path' },
     ],
   });
-  
+
   if (isCancel(method)) {
     return;
   }
-  
+
   // Enter alias name
   const aliasName = await text({
     message: t('install.enterAlias'),
     placeholder: 'vd',
     initialValue: 'vd',
   });
-  
+
   if (isCancel(aliasName) || !aliasName) {
     return;
   }
-  
+
   const s = spinner();
   s.start(t('common.loading'));
-  
+
   try {
     switch (method) {
       case 'symlink': {
         const targetPath = `/usr/local/bin/${aliasName}`;
-        
+
         // Check if already exists
         if (existsSync(targetPath)) {
           s.stop();
@@ -755,15 +814,15 @@ async function installGlobally(): Promise<void> {
             ],
             initialValue: false,
           });
-          
+
           if (isCancel(overwrite) || !overwrite) {
             return;
           }
-          
+
           unlinkSync(targetPath);
           s.start(t('common.loading'));
         }
-        
+
         try {
           symlinkSync(currentBinaryPath, targetPath);
           chmodSync(targetPath, 0o755);
@@ -777,10 +836,10 @@ async function installGlobally(): Promise<void> {
         }
         break;
       }
-      
+
       case 'copy': {
         const targetPath = `/usr/local/bin/${aliasName}`;
-        
+
         // Check if already exists
         if (existsSync(targetPath)) {
           s.stop();
@@ -792,15 +851,15 @@ async function installGlobally(): Promise<void> {
             ],
             initialValue: false,
           });
-          
+
           if (isCancel(overwrite) || !overwrite) {
             return;
           }
-          
+
           unlinkSync(targetPath);
           s.start(t('common.loading'));
         }
-        
+
         try {
           copyFileSync(currentBinaryPath, targetPath);
           chmodSync(targetPath, 0o755);
@@ -814,12 +873,12 @@ async function installGlobally(): Promise<void> {
         }
         break;
       }
-      
+
       case 'path': {
         const shell = process.env.SHELL || '/bin/bash';
         const isZsh = shell.includes('zsh');
         const isBash = shell.includes('bash');
-        
+
         let configFile: string;
         if (isZsh) {
           configFile = join(homedir(), '.zshrc');
@@ -828,10 +887,10 @@ async function installGlobally(): Promise<void> {
         } else {
           configFile = join(homedir(), '.profile');
         }
-        
+
         const binaryDir = dirname(currentBinaryPath);
         const pathExport = `\n# Added by video-downloader\nexport PATH="$PATH:${binaryDir}"\nalias ${aliasName}='${currentBinaryPath}'\n`;
-        
+
         try {
           if (existsSync(configFile)) {
             const currentContent = readFileSync(configFile, 'utf8');
@@ -841,7 +900,7 @@ async function installGlobally(): Promise<void> {
           } else {
             writeFileSync(configFile, pathExport);
           }
-          
+
           s.stop(t('install.pathUpdated', { config: configFile }));
           log.info(t('install.restartTerminal', { config: configFile }));
         } catch (error: any) {
@@ -866,17 +925,17 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
     return;
   }
 
-    const s = spinner();
-    s.start(t('download.gettingVideoInfo'));
+  const s = spinner();
+  s.start(t('download.gettingVideoInfo'));
 
-    try {
-      const videoInfo = await getVideoInfo(url, settings.debug, settings.browser, depPaths);
-      s.stop(t('common.success'));
-      
-      if (!videoInfo) {
-        log.error(t('common.error', { message: 'Video info is empty' }));
-        return;
-      }
+  try {
+    const videoInfo = await getVideoInfo(url, settings.debug, settings.browser, depPaths);
+    s.stop(t('common.success'));
+
+    if (!videoInfo) {
+      log.error(t('common.error', { message: 'Video info is empty' }));
+      return;
+    }
 
     if (!videoInfo) {
       log.error(t('common.error', { message: 'Video info' }));
@@ -972,7 +1031,7 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
 
     // Build quality options only for available formats
     const qualityOptions = [];
-    
+
     if (formatSizes.has('4K')) {
       qualityOptions.push({ label: `4K (${formatSizes.get('4K')})`, value: '4K' });
     }
@@ -988,7 +1047,7 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
     if (formatSizes.has('mp3')) {
       qualityOptions.push({ label: `${t('qualities.mp3')} (${formatSizes.get('mp3')})`, value: 'mp3' });
     }
-    
+
     // If no qualities found, show error
     if (qualityOptions.length === 0) {
       log.error('No available formats found for this video');
@@ -1020,7 +1079,7 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
     }
 
     log.info(t('download.downloading'));
-    
+
     const downloadResults = await downloadVideo(videoInfo, {
       filename: filename,
       downloadPath: expandPath(downloadPath || process.cwd()),
@@ -1046,7 +1105,7 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
 
   } catch (error: any) {
     s.stop();
-    
+
     // Check for authentication required error
     if (error.message === 'AUTH_REQUIRED') {
       log.error('');

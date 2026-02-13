@@ -5,11 +5,11 @@
   },
   "menu": {
     "downloadVideo": "📺 Скачать видео",
-    "settings": "⚙️ Настройки",
+    "settings": "⚙️  Настройки",
     "exit": "🚪 Выход"
   },
   "settings": {
-    "title": "⚙️ Настройки",
+    "title": "⚙️  Настройки",
     "defaultDownloadPath": "📁 Папка загрузки по умолчанию",
     "defaultFilename": "📝 Имя файла по умолчанию",
     "preferredQuality": "🎯 Предпочитаемое качество",

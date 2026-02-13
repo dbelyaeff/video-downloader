@@ -15,10 +15,13 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.0.0",
+    "figlet": "^1.10.0",
+    "picocolors": "^1.1.1",
     "progress": "^2.0.3",
     "yaml": "^2.3.0"
   },
   "devDependencies": {
+    "@types/figlet": "^1.7.0",
     "@types/node": "^20.0.0"
   }
 }

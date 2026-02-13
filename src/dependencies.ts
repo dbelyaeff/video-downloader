@@ -5,7 +5,7 @@ import { homedir, platform } from 'os';
 import { log, spinner } from '@clack/prompts';
 import { t } from './i18n';
 
-interface DependencyPaths {
+export interface DependencyPaths {
   ytDlp: string;
   ffmpeg: string;
 }
@@ -31,11 +31,11 @@ async function checkCommand(command: string): Promise<boolean> {
   return new Promise((resolve) => {
     const checkCmd = getPlatform() === 'win32' ? 'where' : 'which';
     const child = spawn(checkCmd, [command], { stdio: 'ignore' });
-    
+
     child.on('close', (code) => {
       resolve(code === 0);
     });
-    
+
     child.on('error', () => {
       resolve(false);
     });
@@ -48,7 +48,7 @@ async function downloadFile(url: string, destPath: string): Promise<boolean> {
       const plat = getPlatform();
       let command: string;
       let args: string[];
-      
+
       if (plat === 'win32') {
         command = 'powershell';
         args = ['-Command', `Invoke-WebRequest -Uri '${url}' -OutFile '${destPath}' -UseBasicParsing`];
@@ -56,22 +56,22 @@ async function downloadFile(url: string, destPath: string): Promise<boolean> {
         command = 'curl';
         args = ['-L', '--progress-bar', '-o', destPath, url];
       }
-      
+
       const child = spawn(command, args);
-      
+
       child.on('close', (code) => {
         if (code === 0) {
           if (plat !== 'win32') {
             try {
               chmodSync(destPath, 0o755);
-            } catch {}
+            } catch { }
           }
           resolve(true);
         } else {
           resolve(false);
         }
       });
-      
+
       child.on('error', () => {
         resolve(false);
       });
@@ -86,7 +86,7 @@ async function extractArchive(archivePath: string, destDir: string): Promise<boo
     const plat = getPlatform();
     let command: string;
     let args: string[];
-    
+
     if (archivePath.endsWith('.zip')) {
       if (plat === 'win32') {
         command = 'powershell';
@@ -108,13 +108,13 @@ async function extractArchive(archivePath: string, destDir: string): Promise<boo
       resolve(false);
       return;
     }
-    
+
     const child = spawn(command, args, { stdio: 'ignore' });
-    
+
     child.on('close', (code) => {
       resolve(code === 0);
     });
-    
+
     child.on('error', () => {
       resolve(false);
     });
@@ -242,14 +242,14 @@ async function installFfmpeg(): Promise<string | null> {
 async function findFfmpegBinary(dir: string, plat: string): Promise<string | null> {
   const { readdirSync, statSync } = require('fs');
   const ffmpegName = plat === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
-  
+
   try {
     const files = readdirSync(dir);
-    
+
     for (const file of files) {
       const fullPath = join(dir, file);
       const stat = statSync(fullPath);
-      
+
       if (stat.isDirectory()) {
         // Рекурсивно ищем в поддиректориях
         const result = await findFfmpegBinary(fullPath, plat);
@@ -261,16 +261,16 @@ async function findFfmpegBinary(dir: string, plat: string): Promise<string | nul
   } catch {
     return null;
   }
-  
+
   return null;
 }
 
 export async function ensureDependencies(): Promise<DependencyPaths | null> {
   const plat = getPlatform();
-  
+
   let ytDlpPath: string | null = null;
   let ffmpegPath: string | null = null;
-  
+
   // Проверяем yt-dlp
   if (await checkCommand('yt-dlp')) {
     ytDlpPath = 'yt-dlp';
@@ -284,7 +284,7 @@ export async function ensureDependencies(): Promise<DependencyPaths | null> {
       ytDlpPath = await installYtDlp();
     }
   }
-  
+
   // Проверяем ffmpeg
   if (await checkCommand('ffmpeg')) {
     ffmpegPath = 'ffmpeg';
@@ -299,7 +299,7 @@ export async function ensureDependencies(): Promise<DependencyPaths | null> {
       ffmpegPath = await installFfmpeg();
     }
   }
-  
+
   if (!ytDlpPath) {
     log.error(t('dependencies.ytDlpNotFound'));
     return null;
