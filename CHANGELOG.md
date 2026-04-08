@@ -19,7 +19,10 @@ All notable changes to this project will be documented in this file.
 - 🎨 Refactored `main()` into separate `runInteractiveMode()` and `runCliMode()` functions
 - 💻 Banner now displays in CLI mode as well
 
-## [1.1.1] - 2026-02-13
+### Fixed
+- 🐛 Fix CLI args parsing (moved `program.parse()` after main function)
+
+## [1.1.2] - 2026-04-08
 
 ### Added
 - 📌 Display app version and GitHub repository link after the startup banner
