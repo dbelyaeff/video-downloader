@@ -25,8 +25,6 @@ program
   .option('-D, --copy-description', 'Copy description to clipboard (Mac)')
   .option('--debug', 'Enable debug mode');
 
-program.parse();
-
 function expandPath(inputPath: string): string {
   if (inputPath.startsWith('~/')) {
     return inputPath.replace(/^~/, homedir());
@@ -758,6 +756,8 @@ async function runCliMode(
     process.exit(1);
   }
 }
+
+program.parse();
 
 main().catch((error) => {
   console.error('❌ Ошибка:', error);
