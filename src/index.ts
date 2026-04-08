@@ -380,7 +380,33 @@ async function downloadSingleFile(
     });
 
     child.stderr.on('data', (data) => {
+      const output = data.toString();
       errorOutput += data.toString();
+
+      // Парсим прогресс yt-dlp (также может выводиться в stderr)
+      const progressMatch = output.match(/\[download\]\s+(\d+\.?\d*)%\s+of\s+(\d+\.?\d*)([KMGT]i?B)\s+at\s+([\d\.]+)([KMGT]i?B\/s)/);
+      if (progressMatch) {
+        const percent = parseFloat(progressMatch[1]);
+        const size = parseFloat(progressMatch[2]);
+        const unit = progressMatch[3];
+        const speed = parseFloat(progressMatch[4]);
+        const speedUnit = progressMatch[5];
+
+        const unitMultiplier: { [key: string]: number } = {
+          'B': 1, 'KiB': 1024, 'MiB': 1024 ** 2, 'GiB': 1024 ** 3, 'TiB': 1024 ** 4,
+          'KB': 1000, 'MB': 1000 ** 2, 'GB': 1000 ** 3, 'TB': 1000 ** 4
+        };
+
+        totalBytes = size * (unitMultiplier[unit] || 1);
+        downloadedBytes = (percent / 100) * totalBytes;
+
+        const downloadedStr = formatBytes(downloadedBytes);
+        lastTotalStr = formatBytes(totalBytes);
+
+        const progressBar = createProgressBar(percent);
+        process.stdout.write(`\r${progressBar} ${percent.toFixed(1)}% | ${downloadedStr} / ${lastTotalStr} @ ${speed}${speedUnit}/s    `);
+      }
+
       if (options.debug || process.env.DEBUG === 'true') {
         console.error(`[yt-dlp stderr]: ${data.toString()}`);
       }
@@ -657,6 +683,17 @@ async function runCliMode(
     console.log(pc.cyan(`║${' '.repeat(padLeft)}${line}${' '.repeat(remainingSpace - padLeft)}║`));
   });
   console.log(pc.cyan(`╚${border}╝`));
+  console.log();
+
+  let appVersion = '0.0.0';
+  try {
+    const pkgPath = join(process.cwd(), 'package.json');
+    if (existsSync(pkgPath)) {
+      const pkgData = JSON.parse(readFileSync(pkgPath, 'utf8'));
+      appVersion = pkgData.version || appVersion;
+    }
+  } catch { }
+  console.log(pc.dim(`v${appVersion}`));
   console.log();
 
   const depPaths = await ensureDependencies();
