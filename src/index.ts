@@ -504,14 +504,15 @@ async function main() {
 async function runInteractiveMode(settings: Settings): Promise<void> {
   console.clear();
   const font = 'ANSI Shadow';
-  const text1 = figlet.textSync('Video', {
-    font: font as any,
-    horizontalLayout: 'default'
-  });
-  const text2 = figlet.textSync('Downloader', {
-    font: font as any,
-    horizontalLayout: 'default'
-  });
+  let text1: string, text2: string;
+  
+  try {
+    text1 = figlet.textSync('Video', { font: font as any, horizontalLayout: 'default' });
+    text2 = figlet.textSync('Downloader', { font: font as any, horizontalLayout: 'default' });
+  } catch {
+    text1 = 'Video';
+    text2 = 'Downloader';
+  }
 
   const lines1 = text1.split('\n');
   const lines2 = text2.split('\n');
@@ -635,8 +636,15 @@ async function runCliMode(
 ): Promise<void> {
   console.clear();
   const font = 'ANSI Shadow';
-  const text1 = figlet.textSync('Video', { font: font as any, horizontalLayout: 'default' });
-  const text2 = figlet.textSync('Downloader', { font: font as any, horizontalLayout: 'default' });
+  let text1: string, text2: string;
+  
+  try {
+    text1 = figlet.textSync('Video', { font: font as any, horizontalLayout: 'default' });
+    text2 = figlet.textSync('Downloader', { font: font as any, horizontalLayout: 'default' });
+  } catch {
+    text1 = 'Video';
+    text2 = 'Downloader';
+  }
 
   const maxWidth = Math.max(...text1.split('\n').map(l => l.length), ...text2.split('\n').map(l => l.length));
   const paddingX = 4;
