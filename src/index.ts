@@ -8,6 +8,24 @@ import { parse, stringify } from 'yaml';
 import { homedir, platform } from 'os';
 import { ensureDependencies, getYtDlpCommand, getFfmpegCommand, DependencyPaths } from './dependencies';
 import { t, getSystemLanguage, setCurrentLanguage, AVAILABLE_LANGUAGES, Language, isValidLanguage, DEFAULT_LANGUAGE } from './i18n';
+import { Command } from 'commander';
+
+const program = new Command();
+
+program
+  .name('vd')
+  .description('Video downloader CLI')
+  .version('1.2.0')
+  .argument('[url]', 'Video URL to download')
+  .option('-q, --quality <quality>', 'Preferred quality (highest, 4K, 1080p, 720p, 480p, mp3)')
+  .option('-o, --output <path>', 'Download output path')
+  .option('-f, --filename <filename>', 'Output filename')
+  .option('-c, --cover', 'Download cover image (jpg)')
+  .option('-d, --description', 'Download description to file')
+  .option('-D, --copy-description', 'Copy description to clipboard (Mac)')
+  .option('--debug', 'Enable debug mode');
+
+program.parse();
 
 function expandPath(inputPath: string): string {
   if (inputPath.startsWith('~/')) {
@@ -468,16 +486,24 @@ async function downloadVideo(videoInfo: VideoInfo, options: {
 }
 
 async function main() {
-  // Загружаем настройки сначала
+  const args = program.args;
+  const opts = program.opts();
+  const urlFromArg = args[0];
+
   const settings = loadSettings();
-
-  // Спрашиваем язык при первом запуске
   await askForLanguageOnFirstRun(settings);
-
-  // Устанавливаем язык из настроек
   setCurrentLanguage(settings.language);
 
-  // Show banner
+  const debugMode = opts.debug || settings.debug;
+
+  if (urlFromArg) {
+    await runCliMode(urlFromArg, opts, settings, debugMode);
+  } else {
+    await runInteractiveMode(settings);
+  }
+}
+
+async function runInteractiveMode(settings: Settings): Promise<void> {
   console.clear();
   const font = 'ANSI Shadow';
   const text1 = figlet.textSync('Video', {
@@ -595,449 +621,69 @@ async function main() {
   outro('👋 ' + t('menu.exit'));
 }
 
-async function configureSettings(settings: Settings): Promise<void> {
-  const newSettings = await select<string>({
-    message: t('settings.title'),
-    options: [
-      { label: t('settings.defaultDownloadPath'), value: 'defaultDownloadPath' },
-      { label: t('settings.defaultFilename'), value: 'defaultFilename' },
-      { label: t('settings.preferredQuality'), value: 'preferredQuality' },
-      { label: t('settings.downloadCover'), value: 'downloadCover' },
-      { label: t('settings.downloadDescription'), value: 'downloadDescription' },
-      { label: t('settings.debug'), value: 'debug' },
-      { label: t('settings.browser'), value: 'browser' },
-      { label: t('settings.mp3Bitrate'), value: 'mp3Bitrate' },
-      { label: t('settings.language'), value: 'language' },
-      { label: t('settings.installGlobally'), value: 'installGlobally' },
-      { label: t('settings.save'), value: 'save' },
-    ],
+async function runCliMode(
+  url: string,
+  opts: {
+    quality?: string;
+    output?: string;
+    filename?: string;
+    cover?: boolean;
+    description?: boolean;
+    copyDescription?: boolean;
+    debug?: boolean;
+  },
+  settings: Settings,
+  debugMode: boolean
+): Promise<void> {
+  console.clear();
+  const font = 'ANSI Shadow';
+  const text1 = figlet.textSync('Video', { font: font as any, horizontalLayout: 'default' });
+  const text2 = figlet.textSync('Downloader', { font: font as any, horizontalLayout: 'default' });
+
+  const maxWidth = Math.max(...text1.split('\n').map(l => l.length), ...text2.split('\n').map(l => l.length));
+  const paddingX = 4;
+  const border = '═'.repeat(maxWidth + (paddingX * 2));
+
+  console.log(pc.cyan(`╔${border}╗`));
+  [...text1.split('\n'), ...text2.split('\n')].forEach((line) => {
+    const remainingSpace = maxWidth + (paddingX * 2) - line.length;
+    const padLeft = Math.floor(remainingSpace / 2);
+    console.log(pc.cyan(`║${' '.repeat(padLeft)}${line}${' '.repeat(remainingSpace - padLeft)}║`));
   });
+  console.log(pc.cyan(`╚${border}╝`));
+  console.log();
 
-  if (isCancel(newSettings)) {
-    return;
-  }
-
-  switch (newSettings) {
-    case 'defaultDownloadPath':
-      const pathResult = await text({
-        message: t('download.enterPath'),
-        placeholder: settings.defaultDownloadPath || '',
-      });
-      if (!isCancel(pathResult)) {
-        settings.defaultDownloadPath = pathResult;
-      }
-      break;
-    case 'defaultFilename':
-      const filenameResult = await text({
-        message: t('settings.defaultFilename'),
-        placeholder: settings.defaultFilename || '',
-      });
-      if (!isCancel(filenameResult)) {
-        settings.defaultFilename = filenameResult;
-      }
-      break;
-    case 'preferredQuality':
-      const qualityResult = await select<string>({
-        message: t('settings.preferredQuality'),
-        options: [
-          { label: t('qualities.highest'), value: 'highest' },
-          { label: '4K', value: '4K' },
-          { label: '1080p', value: '1080p' },
-          { label: '720p', value: '720p' },
-          { label: '480p', value: '480p' },
-          { label: t('qualities.mp3'), value: 'mp3' },
-        ],
-      });
-      if (!isCancel(qualityResult) && typeof qualityResult === 'string') {
-        settings.preferredQuality = qualityResult;
-      }
-      break;
-    case 'downloadCover':
-      const coverChoice = await select<boolean>({
-        message: t('settings.downloadCover') + '?',
-        options: [
-          { label: t('common.yes'), value: true },
-          { label: t('common.no'), value: false },
-        ],
-        initialValue: settings.downloadCover,
-      });
-      if (!isCancel(coverChoice) && typeof coverChoice === 'boolean') {
-        settings.downloadCover = coverChoice;
-      }
-      break;
-    case 'downloadDescription':
-      const descChoice = await select<boolean>({
-        message: t('settings.downloadDescription') + '?',
-        options: [
-          { label: t('common.yes'), value: true },
-          { label: t('common.no'), value: false },
-        ],
-        initialValue: settings.downloadDescription,
-      });
-      if (!isCancel(descChoice) && typeof descChoice === 'boolean') {
-        settings.downloadDescription = descChoice;
-      }
-      break;
-    case 'debug':
-      const debugChoice = await select<boolean>({
-        message: t('settings.debug') + '?',
-        options: [
-          { label: t('common.yes'), value: true },
-          { label: t('common.no'), value: false },
-        ],
-        initialValue: settings.debug,
-      });
-      if (!isCancel(debugChoice) && typeof debugChoice === 'boolean') {
-        settings.debug = debugChoice;
-      }
-      break;
-    case 'browser':
-      const browserResult = await select<string>({
-        message: t('settings.browser'),
-        options: [
-          { label: t('browsers.none'), value: '' },
-          { label: 'Chrome', value: 'chrome' },
-          { label: 'Firefox', value: 'firefox' },
-          { label: 'Safari', value: 'safari' },
-          { label: 'Edge', value: 'edge' },
-          { label: 'Brave', value: 'brave' },
-          { label: 'Opera', value: 'opera' },
-        ],
-      });
-      if (!isCancel(browserResult) && typeof browserResult === 'string') {
-        settings.browser = browserResult;
-      }
-      break;
-    case 'mp3Bitrate':
-      const bitrateResult = await select<number>({
-        message: t('settings.mp3Bitrate'),
-        options: [
-          { label: t('bitrates.64'), value: 64 },
-          { label: t('bitrates.96'), value: 96 },
-          { label: t('bitrates.128'), value: 128 },
-          { label: t('bitrates.192'), value: 192 },
-          { label: t('bitrates.256'), value: 256 },
-          { label: t('bitrates.320'), value: 320 },
-        ],
-        initialValue: settings.mp3Bitrate,
-      });
-      if (!isCancel(bitrateResult) && typeof bitrateResult === 'number') {
-        settings.mp3Bitrate = bitrateResult;
-      }
-      break;
-    case 'language':
-      const languageResult = await select<Language>({
-        message: t('language.select'),
-        options: [
-          { label: t('language.en'), value: 'en' },
-          { label: t('language.ru'), value: 'ru' },
-        ],
-        initialValue: settings.language,
-      });
-      if (!isCancel(languageResult) && isValidLanguage(languageResult)) {
-        settings.language = languageResult;
-        setCurrentLanguage(languageResult);
-      }
-      break;
-    case 'installGlobally':
-      await installGlobally();
-      break;
-    case 'save':
-      saveSettings(settings);
-      log.success(t('common.success'));
-      return;
-  }
-
-  await configureSettings(settings);
-}
-
-async function installGlobally(): Promise<void> {
-  const currentPlatform = platform();
-  const isWindows = currentPlatform === 'win32';
-  const isMacOS = currentPlatform === 'darwin';
-  const isLinux = currentPlatform === 'linux';
-
-  if (isWindows) {
-    log.warning(t('install.windowsNotSupported'));
-    return;
-  }
-
-  // Get current executable path
-  let currentBinaryPath: string;
-  try {
-    // For compiled binaries, process.execPath is the most reliable way to get the binary location
-    // For source execution, it will point to bun/node
-    currentBinaryPath = process.execPath;
-
-    // Check if we're running from source (bun/node) or compiled binary
-    const isRunningFromSource = currentBinaryPath.includes('bun') ||
-      currentBinaryPath.includes('node') ||
-      currentBinaryPath.endsWith('.ts');
-
-    if (isRunningFromSource) {
-      // Running from source with bun, need to check dist folder
-      const distBinary = join(process.cwd(), 'dist', isMacOS ? 'video-downloader-macos' : 'video-downloader-linux');
-      if (existsSync(distBinary)) {
-        currentBinaryPath = distBinary;
-      } else {
-        log.error('Binary not found. Please build first: bun run build');
-        return;
-      }
-    }
-    // For compiled binaries, process.execPath already points to the correct binary
-    // Verify the binary exists
-    if (!existsSync(currentBinaryPath)) {
-      log.error('Could not locate binary at: ' + currentBinaryPath);
-      return;
-    }
-  } catch (error: any) {
-    log.error('Could not determine binary path: ' + error.message);
-    return;
-  }
-
-  // Select installation method
-  const method = await select<string>({
-    message: t('install.selectMethod'),
-    options: [
-      { label: t('install.symlink'), value: 'symlink' },
-      { label: t('install.copy'), value: 'copy' },
-      { label: t('install.addToPath'), value: 'path' },
-    ],
-  });
-
-  if (isCancel(method)) {
-    return;
-  }
-
-  // Enter alias name
-  const aliasName = await text({
-    message: t('install.enterAlias'),
-    placeholder: 'vd',
-    initialValue: 'vd',
-  });
-
-  if (isCancel(aliasName) || !aliasName) {
-    return;
-  }
-
-  const s = spinner();
-  s.start(t('common.loading'));
-
-  try {
-    switch (method) {
-      case 'symlink': {
-        const targetPath = `/usr/local/bin/${aliasName}`;
-
-        // Check if already exists
-        if (existsSync(targetPath)) {
-          s.stop();
-          const overwrite = await select<boolean>({
-            message: t('install.overwrite'),
-            options: [
-              { label: t('common.yes'), value: true },
-              { label: t('common.no'), value: false },
-            ],
-            initialValue: false,
-          });
-
-          if (isCancel(overwrite) || !overwrite) {
-            return;
-          }
-
-          unlinkSync(targetPath);
-          s.start(t('common.loading'));
-        }
-
-        try {
-          symlinkSync(currentBinaryPath, targetPath);
-          chmodSync(targetPath, 0o755);
-          s.stop(t('install.symlinkCreated', { path: targetPath, target: currentBinaryPath }));
-        } catch (error: any) {
-          if (error.code === 'EACCES' || error.code === 'EPERM') {
-            s.stop(t('install.permissionDenied'));
-          } else {
-            s.stop(t('common.error', { message: error.message }));
-          }
-        }
-        break;
-      }
-
-      case 'copy': {
-        const targetPath = `/usr/local/bin/${aliasName}`;
-
-        // Check if already exists
-        if (existsSync(targetPath)) {
-          s.stop();
-          const overwrite = await select<boolean>({
-            message: t('install.overwrite'),
-            options: [
-              { label: t('common.yes'), value: true },
-              { label: t('common.no'), value: false },
-            ],
-            initialValue: false,
-          });
-
-          if (isCancel(overwrite) || !overwrite) {
-            return;
-          }
-
-          unlinkSync(targetPath);
-          s.start(t('common.loading'));
-        }
-
-        try {
-          copyFileSync(currentBinaryPath, targetPath);
-          chmodSync(targetPath, 0o755);
-          s.stop(t('install.copyCreated', { path: targetPath }));
-        } catch (error: any) {
-          if (error.code === 'EACCES' || error.code === 'EPERM') {
-            s.stop(t('install.permissionDenied'));
-          } else {
-            s.stop(t('common.error', { message: error.message }));
-          }
-        }
-        break;
-      }
-
-      case 'path': {
-        const shell = process.env.SHELL || '/bin/bash';
-        const isZsh = shell.includes('zsh');
-        const isBash = shell.includes('bash');
-
-        let configFile: string;
-        if (isZsh) {
-          configFile = join(homedir(), '.zshrc');
-        } else if (isBash) {
-          configFile = join(homedir(), '.bashrc');
-        } else {
-          configFile = join(homedir(), '.profile');
-        }
-
-        const binaryDir = dirname(currentBinaryPath);
-        const pathExport = `\n# Added by video-downloader\nexport PATH="$PATH:${binaryDir}"\nalias ${aliasName}='${currentBinaryPath}'\n`;
-
-        try {
-          if (existsSync(configFile)) {
-            const currentContent = readFileSync(configFile, 'utf8');
-            if (!currentContent.includes(binaryDir)) {
-              writeFileSync(configFile, currentContent + pathExport);
-            }
-          } else {
-            writeFileSync(configFile, pathExport);
-          }
-
-          s.stop(t('install.pathUpdated', { config: configFile }));
-          log.info(t('install.restartTerminal', { config: configFile }));
-        } catch (error: any) {
-          s.stop(t('common.error', { message: error.message }));
-        }
-        break;
-      }
-    }
-  } catch (error: any) {
-    s.stop(t('common.error', { message: error.message }));
-  }
-}
-
-async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths): Promise<void> {
-  const url = await text({
-    message: t('download.enterUrl'),
-    placeholder: 'https://www.youtube.com/watch?v=...',
-  });
-
-  if (isCancel(url) || !url) {
-    log.error(t('common.error', { message: 'URL' }));
-    return;
+  const depPaths = await ensureDependencies();
+  if (!depPaths) {
+    outro(t('dependencies.initFailed'));
+    process.exit(1);
   }
 
   const s = spinner();
   s.start(t('download.gettingVideoInfo'));
 
   try {
-    const videoInfo = await getVideoInfo(url, settings.debug, settings.browser, depPaths);
+    const videoInfo = await getVideoInfo(url, debugMode, settings.browser, depPaths);
     s.stop(t('common.success'));
 
     if (!videoInfo) {
       log.error(t('common.error', { message: 'Video info is empty' }));
-      return;
+      process.exit(1);
     }
 
-    if (!videoInfo) {
-      log.error(t('common.error', { message: 'Video info' }));
-      return;
-    }
+    const downloadPath = expandPath(opts.output || settings.defaultDownloadPath || process.cwd());
+    const filename = opts.filename || settings.defaultFilename || videoInfo.title || 'video';
+    const quality = opts.quality || settings.preferredQuality;
+    const qualities = quality === 'highest' ? ['1080p'] : [quality];
+    const downloadCover = opts.cover || settings.downloadCover;
+    const downloadDescription = opts.description || settings.downloadDescription;
+    const copyDescription = opts.copyDescription;
 
-    const filename = await text({
-      message: t('download.enterFilename'),
-      placeholder: String(videoInfo.title || 'video'),
-      initialValue: String(videoInfo.title || 'video'),
-    });
-
-    if (isCancel(filename)) {
-      log.info(t('common.cancelled'));
-      return;
-    }
-
-    const downloadPath = await text({
-      message: t('download.enterPath'),
-      placeholder: settings.defaultDownloadPath || process.cwd(),
-      initialValue: settings.defaultDownloadPath || process.cwd(),
-    });
-
-    if (isCancel(downloadPath)) {
-      log.info(t('common.cancelled'));
-      return;
-    }
-
-    // Получаем размеры для каждого качества
-    log.info(t('download.gettingFormatSizes'));
-    // Show video preview
     log.info('');
-    log.info(t('download.videoPreview'));
     log.info(t('download.videoTitle', { title: videoInfo.title || 'N/A' }));
-    if (videoInfo.description) {
-      log.info(t('download.videoDescription'));
-      // Show first 500 chars of description
-      const desc = videoInfo.description.length > 500 ? videoInfo.description.slice(0, 500) + '...' : videoInfo.description;
-      desc.split('\n').slice(0, 10).forEach(line => {
-        if (line.trim()) log.info('  ' + line);
-      });
-    }
     log.info('');
 
-    // Ask about cover download
-    const downloadCoverChoice = await select<boolean>({
-      message: t('download.downloadCoverQuestion'),
-      options: [
-        { label: t('common.yes'), value: true },
-        { label: t('common.no'), value: false },
-      ],
-      initialValue: settings.downloadCover,
-    });
-
-    if (isCancel(downloadCoverChoice)) {
-      log.info(t('common.cancelled'));
-      return;
-    }
-
-    // Ask about description
-    const descriptionAction = await select<string>({
-      message: t('download.descriptionOptions'),
-      options: [
-        { label: t('download.descriptionDownload'), value: 'download' },
-        { label: t('download.descriptionCopy'), value: 'copy' },
-        { label: t('download.descriptionSkip'), value: 'skip' },
-      ],
-      initialValue: settings.downloadDescription ? 'download' : 'skip',
-    });
-
-    if (isCancel(descriptionAction)) {
-      log.info(t('common.cancelled'));
-      return;
-    }
-
-    // Handle copy to clipboard
-    if (descriptionAction === 'copy' && videoInfo.description) {
+    if (copyDescription && videoInfo.description) {
       try {
         const echo = spawn('echo', [videoInfo.description]);
         const pbcopy = spawn('pbcopy');
@@ -1052,66 +698,29 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
       }
     }
 
-    const formatSizes = await getFormatSizes(url, settings.browser, settings.debug, depPaths);
+    const formatSizes = await getFormatSizes(url, settings.browser, debugMode, depPaths);
 
-    // Build quality options only for available formats
-    const qualityOptions = [];
+    const qualityOptions: { label: string; value: string }[] = [];
+    if (formatSizes.has('4K')) qualityOptions.push({ label: `4K (${formatSizes.get('4K')})`, value: '4K' });
+    if (formatSizes.has('1080p')) qualityOptions.push({ label: `1080p (${formatSizes.get('1080p')})`, value: '1080p' });
+    if (formatSizes.has('720p')) qualityOptions.push({ label: `720p (${formatSizes.get('720p')})`, value: '720p' });
+    if (formatSizes.has('480p')) qualityOptions.push({ label: `480p (${formatSizes.get('480p')})`, value: '480p' });
+    if (formatSizes.has('mp3')) qualityOptions.push({ label: `${t('qualities.mp3')} (${formatSizes.get('mp3')})`, value: 'mp3' });
 
-    if (formatSizes.has('4K')) {
-      qualityOptions.push({ label: `4K (${formatSizes.get('4K')})`, value: '4K' });
-    }
-    if (formatSizes.has('1080p')) {
-      qualityOptions.push({ label: `1080p (${formatSizes.get('1080p')})`, value: '1080p' });
-    }
-    if (formatSizes.has('720p')) {
-      qualityOptions.push({ label: `720p (${formatSizes.get('720p')})`, value: '720p' });
-    }
-    if (formatSizes.has('480p')) {
-      qualityOptions.push({ label: `480p (${formatSizes.get('480p')})`, value: '480p' });
-    }
-    if (formatSizes.has('mp3')) {
-      qualityOptions.push({ label: `${t('qualities.mp3')} (${formatSizes.get('mp3')})`, value: 'mp3' });
-    }
-
-    // If no qualities found, show error
     if (qualityOptions.length === 0) {
       log.error('No available formats found for this video');
-      return;
-    }
-
-    const qualities = await multiselect<string>({
-      message: t('download.selectQuality'),
-      options: qualityOptions,
-      required: true,
-    });
-
-    if (isCancel(qualities) || !qualities || qualities.length === 0) {
-      log.error(t('common.required'));
-      return;
-    }
-
-    const confirmDownload = await select<boolean>({
-      message: t('download.confirmDownload'),
-      options: [
-        { label: t('common.yes'), value: true },
-        { label: t('common.no'), value: false },
-      ],
-    });
-
-    if (isCancel(confirmDownload) || !confirmDownload) {
-      log.info(t('common.cancelled'));
-      return;
+      process.exit(1);
     }
 
     log.info(t('download.downloading'));
 
     const downloadResults = await downloadVideo(videoInfo, {
-      filename: filename,
-      downloadPath: expandPath(downloadPath || process.cwd()),
+      filename,
+      downloadPath,
       qualities,
-      downloadCover: downloadCoverChoice,
-      downloadDescription: descriptionAction === 'download',
-      debug: settings.debug,
+      downloadCover,
+      downloadDescription,
+      debug: debugMode,
       browser: settings.browser,
       formatSizes,
       mp3Bitrate: settings.mp3Bitrate,
@@ -1128,10 +737,10 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
       log.info(t('download.fileInfo', { filename: result.filename, quality: result.quality, size: result.sizeMb }));
     }
 
+    outro(t('menu.exit'));
   } catch (error: any) {
     s.stop();
 
-    // Check for authentication required error
     if (error.message === 'AUTH_REQUIRED') {
       log.error('');
       log.error(t('auth.required'));
@@ -1146,6 +755,7 @@ async function downloadVideoFlow(settings: Settings, depPaths: DependencyPaths):
     } else {
       log.error(t('common.error', { message: error.message }));
     }
+    process.exit(1);
   }
 }
 
