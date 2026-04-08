@@ -17,7 +17,7 @@ program
   .description('Video downloader CLI')
   .version('1.2.0')
   .argument('[url]', 'Video URL to download')
-  .option('-q, --quality <quality>', 'Preferred quality (highest, 4K, 1080p, 720p, 480p, mp3)')
+  .option('-q, --quality <quality...>', 'Preferred quality(s): highest, 4K, 1080p, 720p, 480p, mp3 (can specify multiple)')
   .option('-o, --output <path>', 'Download output path')
   .option('-f, --filename <filename>', 'Output filename')
   .option('-c, --cover', 'Download cover image (jpg)')
@@ -622,7 +622,7 @@ async function runInteractiveMode(settings: Settings): Promise<void> {
 async function runCliMode(
   url: string,
   opts: {
-    quality?: string;
+    quality?: string | string[];
     output?: string;
     filename?: string;
     cover?: boolean;
@@ -671,8 +671,17 @@ async function runCliMode(
 
     const downloadPath = expandPath(opts.output || settings.defaultDownloadPath || process.cwd());
     const filename = opts.filename || settings.defaultFilename || videoInfo.title || 'video';
-    const quality = opts.quality || settings.preferredQuality;
-    const qualities = quality === 'highest' ? ['1080p'] : [quality];
+    
+    let qualities: string[];
+    if (opts.quality) {
+      const q = Array.isArray(opts.quality) ? opts.quality : [opts.quality];
+      qualities = q.map(x => x.toLowerCase() === 'highest' ? '1080p' : x);
+    } else if (settings.preferredQuality === 'highest') {
+      qualities = ['1080p'];
+    } else {
+      qualities = [settings.preferredQuality];
+    }
+    
     const downloadCover = opts.cover || settings.downloadCover;
     const downloadDescription = opts.description || settings.downloadDescription;
     const copyDescription = opts.copyDescription;
